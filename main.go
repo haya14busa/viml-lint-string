@@ -5,7 +5,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"regexp"
 	"strings"
@@ -70,27 +69,13 @@ func lintFile(w io.Writer, fname string) error {
 		return err
 	}
 
-	lastoffset := 0
-
 	// Inspect the AST and print all identifiers and literals.
-	ast.Inspect(f, func(n ast.Node) bool {
-		switch x := n.(type) {
+	ast.Inspect(f, func(node ast.Node) bool {
+		switch node := node.(type) {
 		case *ast.BasicLit:
-			if x.Kind == token.STRING {
-				plen := x.Pos().Offset - lastoffset
-				lastoffset = x.Pos().Offset
-				p := make([]byte, plen)
-				n, err := fbuf.Read(p)
-				if n != plen {
-					log.Printf("read %v, want %v bytes", n, plen)
-					return true
-				}
-				if err != nil {
-					log.Println(err)
-					return true
-				}
-				if q := string(p[len(p)-1]); q != `"` && !special.MatchString(x.Value) {
-					fmt.Fprintf(w, "%s:%d:%d: %s", file.Name(), x.Pos().Line, x.Pos().Column, "Prefer single quoted strings\n")
+			if node.Kind == token.STRING {
+				if node.Value[0] == '"' && !special.MatchString(node.Value) {
+					fmt.Fprintf(w, "%s:%d:%d: %s", file.Name(), node.Pos().Line, node.Pos().Column, "Prefer single quoted strings\n")
 				}
 			}
 		}
